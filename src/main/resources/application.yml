@@ -1,0 +1,26 @@
+spring:
+  data:
+    redis:
+      mode: sentinel
+      password: "osckorea!"
+      sentinel:
+        master: mymaster
+        nodes:
+          - 192.168.41.178:26379
+          - 192.168.41.179:26379
+          - 192.168.41.180:26379
+      cluster:
+        nodes:
+          - 192.168.41.175:7000
+          - 192.168.41.176:7000
+          - 192.168.41.177:7000
+        max-redirects: 3
+      lettuce:
+        cluster:
+          refresh:
+            adaptive: true      # 중요: 장애 발생 시 노드 정보를 즉시 갱신
+            period: 60s         # 주기적 갱신
+
+logging:
+  level:
+    io.lettuce.core: DEBUG
