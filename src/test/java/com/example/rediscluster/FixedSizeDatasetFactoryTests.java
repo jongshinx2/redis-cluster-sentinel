@@ -32,9 +32,9 @@ class FixedSizeDatasetFactoryTests {
         String query = FixedSizeJsonPathFactory.create();
 
         assertThat(query.getBytes(StandardCharsets.UTF_8)).hasSize(FixedSizeJsonPathFactory.QUERY_BYTES);
-        assertThat(FixedSizeJsonPathFactory.QUERY_BYTES).isEqualTo(1_400_019);
-        assertThat(query).startsWith("$.odds[?(((");
-        assertThat(query).contains("@.k==\"1\"");
+        assertThat(FixedSizeJsonPathFactory.QUERY_BYTES).isEqualTo(1_400_015);
+        assertThat(query).startsWith("$[?(((");
+        assertThat(query).contains("@.id >= 0");
         assertThat(query).endsWith(")))]");
     }
 }

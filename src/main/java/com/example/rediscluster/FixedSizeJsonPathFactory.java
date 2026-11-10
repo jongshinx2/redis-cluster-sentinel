@@ -3,8 +3,8 @@ package com.example.rediscluster;
 public final class FixedSizeJsonPathFactory {
 
     public static final int NESTING_DEPTH = 700_000;
-    public static final String PREFIX = "$.odds[?(";
-    public static final String PREDICATE = "@.k==\"1\"";
+    public static final String PREFIX = "$[?(";
+    public static final String PREDICATE = "@.id >= 0";
     public static final String SUFFIX = ")]";
     public static final int QUERY_BYTES = PREFIX.length() + NESTING_DEPTH
             + PREDICATE.length() + NESTING_DEPTH + SUFFIX.length();

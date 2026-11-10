@@ -26,7 +26,7 @@ hostname과 cluster bus port가 서로 접근 가능해야 한다.
 
 - `POST /api/redis/dataset`: 단일 Redis List 키에 4,600개 JSON element를 Lua의 `RPUSH`로 원자적으로 저장한다. 전체를 JSON 배열로 조립하면 정확히 1,400,000 UTF-8 byte이며 TTL은 없다. 이미 키가 있으면 `409`를 반환한다.
 - `GET /api/redis/dataset`: `LRANGE key 0 -1`로 4,600개 element를 조회하고 JSON 배열로 반환한다. Logback에 소요 시간과 byte 수를 기록한다.
-- `POST /api/redis/dataset/query`: 요청 본문 없이 호출한다. 서버 시작 시 `N=700000`인 `$.odds[?((((...@.k==\"1\"...))))]` 전문을 로컬 파일로 생성하고, `LRANGE` 결과에 파일의 JSONPath를 적용한다. 깊은 중첩으로 Jayway 파서의 `StackOverflowError` 재현을 목적으로 한다.
+- `POST /api/redis/dataset/query`: 요청 본문 없이 호출한다. 서버 시작 시 현재 루트 JSON 배열과 `id` 필드에 맞는 `N=700000`의 `$[?((((...@.id >= 0...))))]` 전문을 로컬 파일로 생성하고, `LRANGE` 결과에 파일의 JSONPath를 적용한다. 깊은 중첩으로 Jayway 파서의 `StackOverflowError` 재현을 목적으로 한다.
 - `GET /api/redis/health`: Kubernetes probe용 애플리케이션 상태 API다.
 
 ```sh

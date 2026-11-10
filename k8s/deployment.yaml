@@ -26,6 +26,8 @@ spec:
             - name: http
               containerPort: 8080
           env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xss128m"
             - name: APP_REDIS_CLUSTER_SEED_HOST
               value: redis-cluster.redis.svc.cluster.local
             - name: APP_REDIS_CLUSTER_SEED_PORT
