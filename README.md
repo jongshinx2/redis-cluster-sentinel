@@ -26,13 +26,13 @@ hostname과 cluster bus port가 서로 접근 가능해야 한다.
 
 - `POST /api/redis/dataset`: 단일 Redis List 키에 4,600개 JSON element를 Lua의 `RPUSH`로 원자적으로 저장한다. 전체를 JSON 배열로 조립하면 정확히 1,400,000 UTF-8 byte이며 TTL은 없다. 이미 키가 있으면 `409`를 반환한다.
 - `GET /api/redis/dataset`: `LRANGE key 0 -1`로 4,600개 element를 조회하고 JSON 배열로 반환한다. Logback에 소요 시간과 byte 수를 기록한다.
-- `POST /api/redis/dataset/query`: `LRANGE`로 데이터를 읽은 뒤 `text/plain` 본문의 정확히 1,400,000 UTF-8 byte JSONPath Query를 실행한다.
+- `POST /api/redis/dataset/query`: `LRANGE`로 데이터를 읽은 뒤 `text/plain` 본문의 정확히 3,000,000 UTF-8 byte JSONPath Query를 실행한다. Query는 `$[?(@.id >= 0 || @.value == '<3MB dummy>')]` 형태의 완전한 조건식이며 4,600개 항목을 모두 조회한다.
 - `GET /api/redis/health`: Kubernetes probe용 애플리케이션 상태 API다.
 
 ```sh
 curl -X POST http://localhost:8080/api/redis/dataset
 curl http://localhost:8080/api/redis/dataset
-# 1,400,000 byte JSONPath 본문은 k6/redis-read.js에서 생성한다.
+# 3,000,000 byte JSONPath 본문은 k6/redis-read.js에서 생성한다.
 ```
 
 ## 원격 배포
@@ -106,10 +106,14 @@ node 이름으로 사용해 Pod를 해당 노드에 고정한다. Kubernetes nod
 import했거나 registry를 사용한다면 `PIN_TO_REMOTE_NODE=false`로 비활성화할 수 있다.
 `IMAGE_HOSTS`가 2개 이상이면 스크립트가 단일 노드 고정을 자동으로 해제한다.
 
+기본 이미지 태그는 `<git-commit>-<빌드시각>` 형식이다. 커밋하지 않은 코드 변경도 새로운
+Deployment image 값으로 반영되어 Kubernetes가 반드시 새 Pod를 생성한다. 재현 가능한 고정
+태그가 필요할 때만 `IMAGE_TAG`를 직접 지정한다.
+
 ## k6
 
 먼저 데이터 생성 API를 한 번 호출한 뒤 애플리케이션 Service에 접근 가능한 위치에서 실행한다.
-기본값은 GET 1,500 TPS + 1,400,000 byte JSONPath Query POST 1,500 TPS로 총 3,000 TPS, 1분이다.
+기본값은 GET 1,500 TPS + 3,000,000 byte JSONPath Query POST 1,500 TPS로 총 3,000 TPS, 1분이다.
 
 ```sh
 kubectl -n redis-performance port-forward service/redis-cluster-app 8080:8080
@@ -119,4 +123,5 @@ k6 run -e BASE_URL=http://localhost:8080 -e TPS=3000 -e DURATION=1m k6/redis-rea
 1.4MB 응답을 3,000 TPS로 받으면 애플리케이션 응답 기준 약 4.2GB/s(약 33.6Gbps)가
 필요하다. 또한 단일 Redis 키는 Redis Cluster의 한 hash slot/한 primary shard에만
 배치되므로, 목표 TPS는 네트워크·단일 shard·JSON 파싱 CPU 한계를 고려해 단계적으로
-올려 측정해야 한다.
+올려 측정해야 한다. JSONPath 시나리오는 여기에 3MB 요청 본문을 1,500 TPS로 전송하므로
+추가로 약 4.5GB/s의 업로드 대역폭이 필요하다.

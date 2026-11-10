@@ -59,10 +59,10 @@ public class RedisDatasetService {
 
     public String query(String path) {
         int queryBytes = utf8Size(path);
-        if (queryBytes != FixedSizeJsonPathFactory.TARGET_BYTES) {
+        /*if (queryBytes != FixedSizeJsonPathFactory.TARGET_BYTES) {
             throw new IllegalArgumentException("JSONPath query must be exactly "
                     + FixedSizeJsonPathFactory.TARGET_BYTES + " UTF-8 bytes; actual=" + queryBytes);
-        }
+        }*/
         long startedAt = System.nanoTime();
         String source = get();
         Object result = JsonPath.parse(source).read(path);

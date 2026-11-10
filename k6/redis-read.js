@@ -35,10 +35,10 @@ export const options = {
 };
 
 const baseUrl = __ENV.BASE_URL || 'http://localhost:8080';
-const queryTargetBytes = 1400000;
-const queryPrefix = '$[?(@.id >= 0';
-const querySuffix = ')]';
-const jsonPath = queryPrefix + ' '.repeat(queryTargetBytes - queryPrefix.length - querySuffix.length) + querySuffix;
+const queryTargetBytes = 3000000;
+const queryPrefix = "$[?(@.id >= 0 || @.value == '";
+const querySuffix = "')]";
+const jsonPath = queryPrefix + 'q'.repeat(queryTargetBytes - queryPrefix.length - querySuffix.length) + querySuffix;
 
 export function redisGet() {
   const response = http.get(`${baseUrl}/api/redis/dataset`, { tags: { api: 'redis-get' } });

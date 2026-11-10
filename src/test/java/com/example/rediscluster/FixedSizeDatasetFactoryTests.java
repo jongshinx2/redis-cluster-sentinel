@@ -28,13 +28,16 @@ class FixedSizeDatasetFactoryTests {
     }
 
     @Test
-    void createsAValidJsonPathQueryOfExactlyOnePointFourMillionBytes() {
+    void createsAValidJsonPathQueryOfExactlyThreeMillionBytes() {
         String dataset = factory.create();
         String query = FixedSizeJsonPathFactory.create();
 
         List<?> result = JsonPath.read(dataset, query);
 
         assertThat(query.getBytes(StandardCharsets.UTF_8)).hasSize(FixedSizeJsonPathFactory.TARGET_BYTES);
+        assertThat(query).doesNotContain("  ");
+        assertThat(query).startsWith("$[?(@.id >= 0 || @.value == '");
+        assertThat(query).endsWith("')]");
         assertThat(result).hasSize(FixedSizeDatasetFactory.ITEM_COUNT);
     }
 }
