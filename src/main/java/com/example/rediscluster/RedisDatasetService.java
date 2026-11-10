@@ -26,6 +26,7 @@ public class RedisDatasetService {
 
     private final StringRedisTemplate redisTemplate;
     private final FixedSizeDatasetFactory datasetFactory;
+    private final JsonPathQueryFile jsonPathQueryFile;
 
     @Value("${app.redis.dataset-key}")
     private String datasetKey;
@@ -57,14 +58,14 @@ public class RedisDatasetService {
         return value;
     }
 
-    public String query(String path) {
-        int queryBytes = utf8Size(path);
-        /*if (queryBytes != FixedSizeJsonPathFactory.TARGET_BYTES) {
-            throw new IllegalArgumentException("JSONPath query must be exactly "
-                    + FixedSizeJsonPathFactory.TARGET_BYTES + " UTF-8 bytes; actual=" + queryBytes);
-        }*/
+    public String query() {
         long startedAt = System.nanoTime();
         String source = get();
+        String path = jsonPathQueryFile.read();
+        int queryBytes = utf8Size(path);
+        log.info("redis_jsonpath_start key={} queryFile={} queryBytes={} nestingDepth={}",
+                datasetKey, jsonPathQueryFile.path().toAbsolutePath(), queryBytes,
+                FixedSizeJsonPathFactory.NESTING_DEPTH);
         Object result = JsonPath.parse(source).read(path);
         String json = com.jayway.jsonpath.Configuration.defaultConfiguration().jsonProvider().toJson(result);
         long elapsedMicros = elapsedMicros(startedAt);

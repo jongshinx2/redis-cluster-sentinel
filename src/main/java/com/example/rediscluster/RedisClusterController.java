@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -32,10 +31,9 @@ public class RedisClusterController {
         return datasetService.get();
     }
 
-    @PostMapping(value = "/dataset/query", consumes = MediaType.TEXT_PLAIN_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
-    public String queryDataset(@RequestBody String path) {
-        return datasetService.query(path);
+    @PostMapping(value = "/dataset/query", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String queryDataset() {
+        return datasetService.query();
     }
 
     @GetMapping("/health")

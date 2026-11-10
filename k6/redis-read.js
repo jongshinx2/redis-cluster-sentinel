@@ -35,10 +35,6 @@ export const options = {
 };
 
 const baseUrl = __ENV.BASE_URL || 'http://localhost:8080';
-const queryTargetBytes = 3000000;
-const queryPrefix = "$[?(@.id >= 0 || @.value == '";
-const querySuffix = "')]";
-const jsonPath = queryPrefix + 'q'.repeat(queryTargetBytes - queryPrefix.length - querySuffix.length) + querySuffix;
 
 export function redisGet() {
   const response = http.get(`${baseUrl}/api/redis/dataset`, { tags: { api: 'redis-get' } });
@@ -48,9 +44,8 @@ export function redisGet() {
 export function redisJsonPath() {
   const response = http.post(
     `${baseUrl}/api/redis/dataset/query`,
-    jsonPath,
+    null,
     {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
       tags: { api: 'redis-jsonpath' },
     },
   );

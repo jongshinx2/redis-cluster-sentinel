@@ -1,4 +1,6 @@
 app:
+  jsonpath:
+    query-file: ${java.io.tmpdir}/redis-cluster-app/jsonpath-query.txt
   redis:
     dataset-key: performance:dataset:list:1_4mb
     cluster:

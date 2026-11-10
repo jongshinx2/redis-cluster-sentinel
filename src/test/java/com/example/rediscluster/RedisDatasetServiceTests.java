@@ -39,7 +39,7 @@ class RedisDatasetServiceTests {
             }
         };
 
-        RedisDatasetService service = new RedisDatasetService(redisTemplate, factory);
+        RedisDatasetService service = new RedisDatasetService(redisTemplate, factory, null);
         ReflectionTestUtils.setField(service, "datasetKey", key);
 
         String result = service.get();
