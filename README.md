@@ -4,6 +4,24 @@ Spring Boot 애플리케이션이 같은 Kubernetes 클러스터의 OSS Redis Cl
 (`redis-cluster.redis.svc.cluster.local:6379`)에 직접 연결한다. Redis Cluster는 3개 샤드로
 구성되어 있다고 가정하며, 애플리케이션에는 Sentinel/standalone/password 설정이 없다.
 
+Redis 연결은 `RedisClusterClientConfig`의 Java 설정을 사용한다. 안정적인 Kubernetes Service
+DNS만 topology refresh source로 유지하고, 10초 주기 refresh, MOVED/ASK/재연결 기반 adaptive
+refresh, stale connection 종료, 자동 재연결을 활성화한다.
+
+Redis Pod 재기동 후에도 오류가 지속되면 애플리케이션이 아니라 Redis Cluster 자체가 이전
+Pod IP를 광고하는지 먼저 확인한다.
+
+```sh
+kubectl -n redis exec -it <redis-pod> -- redis-cli -p 6379 CLUSTER NODES
+kubectl -n redis exec -it <redis-pod> -- redis-cli -p 6379 CLUSTER SHARDS
+```
+
+출력에 종료된 Pod IP가 남아 있다면 client refresh만으로 해결할 수 없다. Redis는 StatefulSet과
+headless Service의 안정적인 Pod DNS를 사용하고, Redis 7 이상에서는 각 노드에
+`cluster-announce-hostname`과 `cluster-preferred-endpoint-type hostname`을 설정해 client에
+Pod IP 대신 안정적인 hostname을 광고하는 구성을 권장한다. 모든 Redis Pod에서 광고된
+hostname과 cluster bus port가 서로 접근 가능해야 한다.
+
 ## API
 
 - `POST /api/redis/dataset`: 단일 키에 4,600개 객체로 구성된 정확히 1,400,000 UTF-8 byte JSON 배열을 `SETNX`로 저장한다. TTL은 설정하지 않는다. 이미 키가 있으면 `409`를 반환한다.

@@ -1,16 +1,7 @@
-spring:
-  data:
-    redis:
-      cluster:
-        nodes:
-          - redis-cluster.redis.svc.cluster.local:6379
-        max-redirects: 5
-      lettuce:
-        cluster:
-          refresh:
-            adaptive: true
-            period: 30s
-
 app:
   redis:
     dataset-key: performance:dataset:1_4mb
+    cluster:
+      seed-host: redis-cluster.redis.svc.cluster.local
+      seed-port: 6379
+      max-redirects: 5

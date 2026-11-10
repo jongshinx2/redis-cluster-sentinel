@@ -26,8 +26,10 @@ spec:
             - name: http
               containerPort: 8080
           env:
-            - name: SPRING_DATA_REDIS_CLUSTER_NODES
-              value: redis-cluster.redis.svc.cluster.local:6379
+            - name: APP_REDIS_CLUSTER_SEED_HOST
+              value: redis-cluster.redis.svc.cluster.local
+            - name: APP_REDIS_CLUSTER_SEED_PORT
+              value: "6379"
             - name: LOG_PATH
               value: /app/logs
           resources:
