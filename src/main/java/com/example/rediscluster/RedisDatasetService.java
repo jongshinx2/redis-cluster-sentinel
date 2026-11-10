@@ -5,14 +5,24 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RedisDatasetService {
+
+    private static final DefaultRedisScript<Long> CREATE_LIST_ONCE_SCRIPT = new DefaultRedisScript<>("""
+            if redis.call('EXISTS', KEYS[1]) == 1 then
+                return 0
+            end
+            redis.call('RPUSH', KEYS[1], unpack(ARGV))
+            return #ARGV
+            """, Long.class);
 
     private final StringRedisTemplate redisTemplate;
     private final FixedSizeDatasetFactory datasetFactory;
@@ -21,11 +31,12 @@ public class RedisDatasetService {
     private String datasetKey;
 
     public DatasetWriteResult createOnce() {
-        String dataset = datasetFactory.create();
+        List<String> elements = datasetFactory.createElements();
         long startedAt = System.nanoTime();
-        boolean created = Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(datasetKey, dataset));
+        Long inserted = redisTemplate.execute(CREATE_LIST_ONCE_SCRIPT, List.of(datasetKey), elements.toArray());
+        boolean created = inserted != null && inserted == FixedSizeDatasetFactory.ITEM_COUNT;
         long elapsedMicros = elapsedMicros(startedAt);
-        log.info("redis_set key={} created={} items={} bytes={} elapsedMicros={}",
+        log.info("redis_rpush key={} created={} items={} jsonBytes={} elapsedMicros={}",
                 datasetKey, created, FixedSizeDatasetFactory.ITEM_COUNT,
                 FixedSizeDatasetFactory.TARGET_BYTES, elapsedMicros);
         return new DatasetWriteResult(created, datasetKey, FixedSizeDatasetFactory.ITEM_COUNT,
@@ -34,13 +45,15 @@ public class RedisDatasetService {
 
     public String get() {
         long startedAt = System.nanoTime();
-        String value = redisTemplate.opsForValue().get(datasetKey);
+        List<String> elements = redisTemplate.opsForList().range(datasetKey, 0, -1);
         long elapsedMicros = elapsedMicros(startedAt);
-        if (value == null) {
-            log.warn("redis_get key={} found=false elapsedMicros={}", datasetKey, elapsedMicros);
+        if (elements == null || elements.isEmpty()) {
+            log.warn("redis_lrange key={} found=false elapsedMicros={}", datasetKey, elapsedMicros);
             throw new DatasetNotFoundException(datasetKey);
         }
-        log.info("redis_get key={} found=true bytes={} elapsedMicros={}", datasetKey, utf8Size(value), elapsedMicros);
+        String value = datasetFactory.toJson(elements);
+        log.info("redis_lrange key={} found=true items={} jsonBytes={} elapsedMicros={}",
+                datasetKey, elements.size(), utf8Size(value), elapsedMicros);
         return value;
     }
 

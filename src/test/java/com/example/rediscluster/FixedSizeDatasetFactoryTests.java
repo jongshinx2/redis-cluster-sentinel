@@ -15,9 +15,11 @@ class FixedSizeDatasetFactoryTests {
 
     @Test
     void createsExactlyFourThousandSixHundredItemsAndOnePointFourMillionBytes() {
-        String dataset = factory.create();
+        List<String> elements = factory.createElements();
+        String dataset = factory.toJson(elements);
         List<?> items = JsonPath.read(dataset, "$[*]");
 
+        assertThat(elements).hasSize(FixedSizeDatasetFactory.ITEM_COUNT);
         assertThat(items).hasSize(FixedSizeDatasetFactory.ITEM_COUNT);
         assertThat(dataset.getBytes(StandardCharsets.UTF_8)).hasSize(FixedSizeDatasetFactory.TARGET_BYTES);
 

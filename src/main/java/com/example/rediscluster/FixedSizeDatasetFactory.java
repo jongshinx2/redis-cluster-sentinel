@@ -3,6 +3,8 @@ package com.example.rediscluster;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class FixedSizeDatasetFactory {
@@ -11,6 +13,10 @@ public class FixedSizeDatasetFactory {
     public static final int TARGET_BYTES = 1_400_000;
 
     public String create() {
+        return toJson(createElements());
+    }
+
+    public List<String> createElements() {
         int baseBytes = 2 + ITEM_COUNT - 1;
         for (int id = 0; id < ITEM_COUNT; id++) {
             baseBytes += itemPrefix(id).length() + 2;
@@ -23,23 +29,22 @@ public class FixedSizeDatasetFactory {
 
         int payloadPerItem = payloadBytes / ITEM_COUNT;
         int remainder = payloadBytes % ITEM_COUNT;
-        StringBuilder json = new StringBuilder(TARGET_BYTES);
-        json.append('[');
+        List<String> elements = new ArrayList<>(ITEM_COUNT);
         for (int id = 0; id < ITEM_COUNT; id++) {
-            if (id > 0) {
-                json.append(',');
-            }
-            json.append(itemPrefix(id));
-            json.append("x".repeat(payloadPerItem + (id < remainder ? 1 : 0)));
-            json.append("\"}");
+            elements.add(itemPrefix(id)
+                    + "x".repeat(payloadPerItem + (id < remainder ? 1 : 0))
+                    + "\"}");
         }
-        json.append(']');
 
-        int actualBytes = json.toString().getBytes(StandardCharsets.UTF_8).length;
+        int actualBytes = toJson(elements).getBytes(StandardCharsets.UTF_8).length;
         if (actualBytes != TARGET_BYTES) {
             throw new IllegalStateException("Expected " + TARGET_BYTES + " bytes, generated " + actualBytes);
         }
-        return json.toString();
+        return elements;
+    }
+
+    public String toJson(List<String> elements) {
+        return "[" + String.join(",", elements) + "]";
     }
 
     private String itemPrefix(int id) {

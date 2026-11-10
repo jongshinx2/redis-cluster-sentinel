@@ -1,6 +1,6 @@
 app:
   redis:
-    dataset-key: performance:dataset:1_4mb
+    dataset-key: performance:dataset:list:1_4mb
     cluster:
       seed-host: redis-cluster.redis.svc.cluster.local
       seed-port: 6379

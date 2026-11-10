@@ -24,9 +24,9 @@ hostname과 cluster bus port가 서로 접근 가능해야 한다.
 
 ## API
 
-- `POST /api/redis/dataset`: 단일 키에 4,600개 객체로 구성된 정확히 1,400,000 UTF-8 byte JSON 배열을 `SETNX`로 저장한다. TTL은 설정하지 않는다. 이미 키가 있으면 `409`를 반환한다.
-- `GET /api/redis/dataset`: 전체 값을 조회하고 Logback에 소요 시간과 byte 수를 기록한다.
-- `POST /api/redis/dataset/query`: `text/plain` 본문으로 정확히 1,400,000 UTF-8 byte인 JSONPath Query를 받아 Redis 데이터에 실행한다. Query는 전체 4,600개 항목을 조회한다.
+- `POST /api/redis/dataset`: 단일 Redis List 키에 4,600개 JSON element를 Lua의 `RPUSH`로 원자적으로 저장한다. 전체를 JSON 배열로 조립하면 정확히 1,400,000 UTF-8 byte이며 TTL은 없다. 이미 키가 있으면 `409`를 반환한다.
+- `GET /api/redis/dataset`: `LRANGE key 0 -1`로 4,600개 element를 조회하고 JSON 배열로 반환한다. Logback에 소요 시간과 byte 수를 기록한다.
+- `POST /api/redis/dataset/query`: `LRANGE`로 데이터를 읽은 뒤 `text/plain` 본문의 정확히 1,400,000 UTF-8 byte JSONPath Query를 실행한다.
 - `GET /api/redis/health`: Kubernetes probe용 애플리케이션 상태 API다.
 
 ```sh
