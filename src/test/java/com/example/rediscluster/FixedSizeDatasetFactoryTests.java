@@ -32,7 +32,8 @@ class FixedSizeDatasetFactoryTests {
         String query = FixedSizeJsonPathFactory.create();
 
         assertThat(query.getBytes(StandardCharsets.UTF_8)).hasSize(FixedSizeJsonPathFactory.QUERY_BYTES);
-        assertThat(FixedSizeJsonPathFactory.QUERY_BYTES).isEqualTo(1_400_015);
+        assertThat(FixedSizeJsonPathFactory.QUERY_BYTES).isEqualTo(2_500_000);
+        assertThat(FixedSizeJsonPathFactory.NESTING_DEPTH).isEqualTo(1_249_992);
         assertThat(query).startsWith("$[?(((");
         assertThat(query).contains("@.id >= 0");
         assertThat(query).endsWith(")))]");
