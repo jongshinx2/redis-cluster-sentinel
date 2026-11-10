@@ -1,26 +1,60 @@
 package com.example.rediscluster;
 
+import com.jayway.jsonpath.InvalidPathException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@RequiredArgsConstructor
-@RequestMapping("/redis")
+import java.util.Map;
+
 @RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/redis")
 public class RedisClusterController {
 
-    private final RedisClusterService redisClusterService;
+    private final RedisDatasetService datasetService;
 
-    @GetMapping("/start")
-    public String startTest() {
-        redisClusterService.startTest();
-        return "Redis Cluster 테스트가 시작되었습니다. 애플리케이션 로그를 확인하세요.";
+    @PostMapping("/dataset")
+    public ResponseEntity<RedisDatasetService.DatasetWriteResult> createDataset() {
+        RedisDatasetService.DatasetWriteResult result = datasetService.createOnce();
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.CONFLICT).body(result);
     }
 
-    @GetMapping("/stop")
-    public String stopTest() {
-        redisClusterService.stopTest();
-        return "테스트 중단 요청을 보냈습니다.";
+    @GetMapping(value = "/dataset", produces = MediaType.APPLICATION_JSON_VALUE)
+    public String getDataset() {
+        return datasetService.get();
+    }
+
+    @PostMapping(value = "/dataset/query", consumes = MediaType.TEXT_PLAIN_VALUE,
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public String queryDataset(@RequestBody String path) {
+        return datasetService.query(path);
+    }
+
+    @GetMapping("/health")
+    public Map<String, String> health() {
+        return Map.of("status", "UP");
+    }
+
+    @ExceptionHandler(DatasetNotFoundException.class)
+    public ResponseEntity<Map<String, String>> notFound(DatasetNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidPathException.class)
+    public ResponseEntity<Map<String, String>> invalidPath(InvalidPathException exception) {
+        return ResponseEntity.badRequest().body(Map.of("error", "Invalid JSONPath: " + exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, String>> invalidQuerySize(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(Map.of("error", exception.getMessage()));
     }
 }
