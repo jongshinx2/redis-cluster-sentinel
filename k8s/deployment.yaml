@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: app
-          image: redis-cluster-app:latest
+          image: docker.io/library/redis-cluster-app:latest
           imagePullPolicy: Never
           ports:
             - name: http

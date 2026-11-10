@@ -19,22 +19,74 @@ curl http://localhost:8080/api/redis/dataset
 
 ## 원격 배포
 
-원격 호스트의 Docker daemon에 이미지를 load한 뒤 그 호스트의 `kubectl`로 Deployment를
-적용한다. 원격 Docker daemon의 이미지가 Kubernetes 노드에서 보이는 환경(예: Docker
-runtime 기반 단일 노드)에 적합하다. containerd 클러스터는 환경에 맞는 import 명령을
-`REMOTE_LOAD_COMMAND`에 지정하고 모든 스케줄 대상 노드에 이미지를 넣거나 registry를
-사용해야 한다.
+로컬 Docker에서 이미지를 build/save한 뒤 원격 Kubernetes 노드의 containerd에 import하고
+그 호스트의 `kubectl`로 Deployment를 적용한다. 접속에는 OpenSSH의 `ssh`와 `scp`를 사용하며
+Vagrant/OpenSSH private key를 직접 지정할 수 있다. 기본 import 명령은 kubelet이 사용하는
+containerd namespace에 이미지를 넣는 다음 명령이다.
+
+```text
+sudo -n ctr --namespace k8s.io images import IMAGE_ARCHIVE
+```
+
+이미지 이름은 kubelet의 정규화 규칙과 맞도록 `docker.io/library/redis-cluster-app:<tag>`를
+사용하며 Deployment의 `imagePullPolicy`는 `Never`다. 여러 worker node에 Pod가 스케줄될 수
+있다면 모든 대상 노드에 같은 이미지를 import하거나 내부 registry를 사용해야 한다.
 
 ```sh
+# Vagrant의 IdentityFile을 SSH_KEY에 그대로 지정한다.
+REMOTE_HOST=user@host \
+SSH_KEY='C:/workspace/.vagrant/machines/default/virtualbox/private_key' \
+./scripts/deploy-remote.sh
+
+# 세 worker node의 containerd에 동일한 이미지를 import한다.
+REMOTE_HOST=vagrant@192.168.41.160 \
+IMAGE_HOSTS='vagrant@192.168.41.160 vagrant@192.168.41.161 vagrant@192.168.41.162' \
+SSH_KEY='C:/workspace/.vagrant/machines/default/virtualbox/private_key' \
+./scripts/deploy-remote.sh
+
+# ssh-agent에 키가 등록되어 있다면 SSH_KEY는 생략한다.
 REMOTE_HOST=user@host ./scripts/deploy-remote.sh
 
-# containerd 예시(환경별 namespace/path 확인 필요)
+# k3s 내장 containerd를 사용하는 경우
 REMOTE_HOST=user@host \
-REMOTE_LOAD_COMMAND='sudo ctr -n k8s.io images import' \
+SSH_KEY='C:/workspace/.vagrant/machines/default/virtualbox/private_key' \
+REMOTE_LOAD_COMMAND='sudo -n k3s ctr images import' \
+REMOTE_IMAGE_LIST_COMMAND='sudo -n k3s ctr images list' \
 ./scripts/deploy-remote.sh
 ```
 
-`IMAGE_NAME`, `IMAGE_TAG`, `NAMESPACE`, `REMOTE_DIR`도 환경변수로 변경할 수 있다.
+스크립트는 원격 Kubernetes 환경을 다음 순서로 자동 감지한다.
+
+- k3s: `sudo -n k3s kubectl`
+- MicroK8s: `sudo -n microk8s kubectl`
+- RKE2: `/etc/rancher/rke2/rke2.yaml`
+- kubeadm: `/etc/kubernetes/admin.conf`
+- 일반 사용자: `$HOME/.kube/config`
+
+자동 감지할 수 없는 환경은 다음처럼 직접 지정한다.
+
+```sh
+# 일반 사용자 kubeconfig
+REMOTE_KUBECTL='kubectl --kubeconfig=/home/deploy/.kube/config' \
+REMOTE_HOST=user@host SSH_KEY='C:/path/to/private_key' ./scripts/deploy-remote.sh
+
+# k3s
+REMOTE_KUBECTL='sudo -n kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml' \
+REMOTE_HOST=user@host SSH_KEY='C:/path/to/private_key' ./scripts/deploy-remote.sh
+```
+
+`sudo -n`은 암호 프롬프트 대신 즉시 실패하므로 배포 계정에 필요한 명령의 `NOPASSWD`
+권한이 있어야 한다. 최초 접속의 host key는 `StrictHostKeyChecking=accept-new`로
+`known_hosts`에 등록되며, 이후 서버 키가 변경되면 접속을 거부한다. `IMAGE_NAME`,
+`IMAGE_TAG`, `NAMESPACE`, `REMOTE_DIR`, `SSH_PORT`, `SSH_BIN`, `SCP_BIN`도 환경변수로 변경할 수 있다.
+
+`IMAGE_HOSTS`에는 이미지를 import할 SSH 대상 노드를 공백으로 구분해 지정한다. `REMOTE_HOST`는
+kubectl을 실행할 대표 노드이며 `IMAGE_HOSTS`에도 포함해야 한다. 기본값
+`PIN_TO_REMOTE_NODE=true`는 이미지를 import한 SSH 대상 노드의 hostname을 Kubernetes
+node 이름으로 사용해 Pod를 해당 노드에 고정한다. Kubernetes node 이름이 hostname과 다르면
+`K8S_NODE_NAME=<kubectl get nodes에 표시되는 이름>`을 지정한다. 모든 worker에 이미지를
+import했거나 registry를 사용한다면 `PIN_TO_REMOTE_NODE=false`로 비활성화할 수 있다.
+`IMAGE_HOSTS`가 2개 이상이면 스크립트가 단일 노드 고정을 자동으로 해제한다.
 
 ## k6
 
