@@ -1,9 +1,10 @@
 package com.example.rediscluster;
 
-import com.jayway.jsonpath.JsonPath;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.connection.RedisClusterConnection;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -27,9 +28,13 @@ public class RedisDatasetService {
     private final StringRedisTemplate redisTemplate;
     private final FixedSizeDatasetFactory datasetFactory;
     private final JsonPathQueryFile jsonPathQueryFile;
+    private final RedisConnectionFactory connectionFactory;
 
     @Value("${app.redis.dataset-key}")
     private String datasetKey;
+
+    @Value("${app.redis.json-dataset-key}")
+    private String jsonDatasetKey;
 
     public DatasetWriteResult createOnce() {
         List<String> elements = datasetFactory.createElements();
@@ -41,6 +46,23 @@ public class RedisDatasetService {
                 datasetKey, created, FixedSizeDatasetFactory.ITEM_COUNT,
                 FixedSizeDatasetFactory.TARGET_BYTES, elapsedMicros);
         return new DatasetWriteResult(created, datasetKey, FixedSizeDatasetFactory.ITEM_COUNT,
+                FixedSizeDatasetFactory.TARGET_BYTES, elapsedMicros);
+    }
+
+    public DatasetWriteResult createJsonOnce() {
+        String dataset = datasetFactory.create();
+        long startedAt = System.nanoTime();
+        Object response;
+        try (RedisClusterConnection connection = connectionFactory.getClusterConnection()) {
+            response = connection.execute("JSON.SET", utf8(jsonDatasetKey), List.of(
+                    utf8("$"), utf8(dataset), utf8("NX")));
+        }
+        boolean created = response != null;
+        long elapsedMicros = elapsedMicros(startedAt);
+        log.info("redis_json_set key={} created={} items={} jsonBytes={} elapsedMicros={}",
+                jsonDatasetKey, created, FixedSizeDatasetFactory.ITEM_COUNT,
+                FixedSizeDatasetFactory.TARGET_BYTES, elapsedMicros);
+        return new DatasetWriteResult(created, jsonDatasetKey, FixedSizeDatasetFactory.ITEM_COUNT,
                 FixedSizeDatasetFactory.TARGET_BYTES, elapsedMicros);
     }
 
@@ -60,18 +82,30 @@ public class RedisDatasetService {
 
     public String query() {
         long startedAt = System.nanoTime();
-        String source = get();
         String path = jsonPathQueryFile.read();
         int queryBytes = utf8Size(path);
         log.info("redis_jsonpath_start key={} queryFile={} queryBytes={} nestingDepth={}",
-                datasetKey, jsonPathQueryFile.path().toAbsolutePath(), queryBytes,
+                jsonDatasetKey, jsonPathQueryFile.path().toAbsolutePath(), queryBytes,
                 FixedSizeJsonPathFactory.NESTING_DEPTH);
-        Object result = JsonPath.parse(source).read(path);
-        String json = com.jayway.jsonpath.Configuration.defaultConfiguration().jsonProvider().toJson(result);
+        Object response;
+        try (RedisClusterConnection connection = connectionFactory.getClusterConnection()) {
+            response = connection.execute("JSON.GET", utf8(jsonDatasetKey), List.of(utf8(path)));
+        }
+        if (response == null) {
+            throw new DatasetNotFoundException(jsonDatasetKey);
+        }
+        if (!(response instanceof byte[] bytes)) {
+            throw new IllegalStateException("Unexpected JSON.GET response type: " + response.getClass().getName());
+        }
+        String json = new String(bytes, StandardCharsets.UTF_8);
         long elapsedMicros = elapsedMicros(startedAt);
-        log.info("redis_jsonpath key={} queryBytes={} sourceBytes={} responseBytes={} elapsedMicros={}",
-                datasetKey, queryBytes, utf8Size(source), utf8Size(json), elapsedMicros);
+        log.info("redis_json_get key={} queryBytes={} responseBytes={} elapsedMicros={}",
+                jsonDatasetKey, queryBytes, utf8Size(json), elapsedMicros);
         return json;
+    }
+
+    private byte[] utf8(String value) {
+        return value.getBytes(StandardCharsets.UTF_8);
     }
 
     private int utf8Size(String value) {

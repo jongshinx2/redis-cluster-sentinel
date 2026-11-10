@@ -3,6 +3,7 @@ app:
     query-file: ${java.io.tmpdir}/redis-cluster-app/jsonpath-query.txt
   redis:
     dataset-key: performance:dataset:list:1_4mb
+    json-dataset-key: performance:dataset:json:1_4mb
     cluster:
       seed-host: redis-cluster.redis.svc.cluster.local
       seed-port: 6379

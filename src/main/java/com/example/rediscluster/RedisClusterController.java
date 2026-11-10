@@ -1,6 +1,5 @@
 package com.example.rediscluster;
 
-import com.jayway.jsonpath.InvalidPathException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,6 +25,12 @@ public class RedisClusterController {
         return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.CONFLICT).body(result);
     }
 
+    @PostMapping("/json-dataset")
+    public ResponseEntity<RedisDatasetService.DatasetWriteResult> createJsonDataset() {
+        RedisDatasetService.DatasetWriteResult result = datasetService.createJsonOnce();
+        return ResponseEntity.status(result.created() ? HttpStatus.CREATED : HttpStatus.CONFLICT).body(result);
+    }
+
     @GetMapping(value = "/dataset", produces = MediaType.APPLICATION_JSON_VALUE)
     public String getDataset() {
         return datasetService.get();
@@ -44,11 +49,6 @@ public class RedisClusterController {
     @ExceptionHandler(DatasetNotFoundException.class)
     public ResponseEntity<Map<String, String>> notFound(DatasetNotFoundException exception) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", exception.getMessage()));
-    }
-
-    @ExceptionHandler(InvalidPathException.class)
-    public ResponseEntity<Map<String, String>> invalidPath(InvalidPathException exception) {
-        return ResponseEntity.badRequest().body(Map.of("error", "Invalid JSONPath: " + exception.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

@@ -25,13 +25,15 @@ hostname과 cluster bus port가 서로 접근 가능해야 한다.
 ## API
 
 - `POST /api/redis/dataset`: 단일 Redis List 키에 4,600개 JSON element를 Lua의 `RPUSH`로 원자적으로 저장한다. 전체를 JSON 배열로 조립하면 정확히 1,400,000 UTF-8 byte이며 TTL은 없다. 이미 키가 있으면 `409`를 반환한다.
+- `POST /api/redis/json-dataset`: 동일한 1,400,000 byte 문서를 별도 Redis JSON 키에 `JSON.SET ... NX`로 저장한다. Redis JSON 명령 지원 환경에서만 사용한다.
 - `GET /api/redis/dataset`: `LRANGE key 0 -1`로 4,600개 element를 조회하고 JSON 배열로 반환한다. Logback에 소요 시간과 byte 수를 기록한다.
-- `POST /api/redis/dataset/query`: 요청 본문 없이 호출한다. 서버 시작 시 현재 루트 JSON 배열과 `id` 필드에 맞는 중첩 깊이 `1,249,992`의 `$[?((((...@.id >= 0...))))]` 전문을 로컬 파일로 생성한다. 전문은 정확히 2,500,000 UTF-8 byte이며, `LRANGE` 결과에 적용해 Jayway 파서의 `StackOverflowError` 재현을 목적으로 한다.
+- `POST /api/redis/dataset/query`: 요청 본문 없이 호출한다. 서버 시작 시 생성한 정확히 2,500,000 byte JSONPath 파일을 Java에서 파싱하지 않고 Redis Cluster의 `JSON.GET` raw command 인자로 직접 전달한다. Redis 서버 측 JSONPath 처리와 장애를 검증한다.
 - `GET /api/redis/health`: Kubernetes probe용 애플리케이션 상태 API다.
 
 ```sh
 curl -X POST http://localhost:8080/api/redis/dataset
 curl http://localhost:8080/api/redis/dataset
+curl -X POST http://localhost:8080/api/redis/json-dataset
 curl -X POST http://localhost:8080/api/redis/dataset/query
 ```
 
